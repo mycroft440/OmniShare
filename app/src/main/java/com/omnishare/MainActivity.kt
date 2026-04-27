@@ -10,10 +10,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import com.omnishare.service.OmniShareService
 import com.omnishare.ui.MainScreen
+import com.omnishare.ui.SettingsScreen
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var prefs: AppPreferences
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -26,16 +30,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        prefs = AppPreferences(this)
         
         requestPermissions()
 
         setContent {
+            var currentScreen by remember { mutableStateOf("main") }
+
             MaterialTheme {
                 Surface {
-                    MainScreen(
-                        onStart = { startService() },
-                        onStop = { stopService() }
-                    )
+                    if (currentScreen == "main") {
+                        MainScreen(
+                            onStart = { startService() },
+                            onStop = { stopService() },
+                            onSettingsClick = { currentScreen = "settings" }
+                        )
+                    } else {
+                        SettingsScreen(
+                            prefs = prefs,
+                            onBack = { currentScreen = "main" }
+                        )
+                    }
                 }
             }
         }
@@ -53,6 +68,19 @@ class MainActivity : ComponentActivity() {
         }
         
         requestPermissionLauncher.launch(permissions.toTypedArray())
+        checkAndRequestBatteryOptimizations()
+    }
+
+    private fun checkAndRequestBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            }
+        }
     }
 
     private fun startService() {

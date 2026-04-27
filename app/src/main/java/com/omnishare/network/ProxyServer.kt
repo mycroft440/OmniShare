@@ -1,7 +1,9 @@
 package com.omnishare.network
 
 import android.util.Log
+import com.omnishare.AppPreferences
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
@@ -12,12 +14,13 @@ class ProxyServer(private val port: Int = 8282) {
     private var serverSocket: ServerSocket? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var isRunning = false
+    private var currentConnections = AtomicInteger(0)
     
     // NUCLEAR OPTION DEPURACAO
     private val nuclearLogCounter = AtomicInteger(0)
     private val maxNuclearLogs = 5
 
-    fun start() {
+    fun start(prefs: AppPreferences) {
         if (isRunning) return
         isRunning = true
         scope.launch {
@@ -26,7 +29,23 @@ class ProxyServer(private val port: Int = 8282) {
                 Log.d("ProxyServer", "Servidor Proxy iniciado na porta $port")
                 while (isRunning) {
                     val clientSocket = serverSocket?.accept() ?: break
-                    launch { handleClient(clientSocket) }
+                    
+                    // Verificacao de Banimento e Limite
+                    val bannedIps = prefs.bannedIps.first()
+                    val maxLimit = prefs.maxConnections.first()
+                    val clientIp = clientSocket.inetAddress.hostAddress ?: ""
+                    
+                    if (bannedIps.contains(clientIp) || currentConnections.get() >= maxLimit) {
+                        Log.w("ProxyServer", "Conexao recusada para $clientIp (Banido ou Limite atingido)")
+                        clientSocket.close()
+                        continue
+                    }
+
+                    launch { 
+                        currentConnections.incrementAndGet()
+                        handleClient(clientSocket) 
+                        currentConnections.decrementAndGet()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("ProxyServer", "Erro critico no loop do proxy", e)
@@ -67,10 +86,8 @@ class ProxyServer(private val port: Int = 8282) {
                 if (isNuclear) {
                     Log.e("NUCLEAR_OPTION", "--- INICIO TENTATIVA #$attemptId ---")
                     Log.e("NUCLEAR_OPTION", "Method: $method | URL: $url")
-                    Log.e("NUCLEAR_OPTION", "Headers Parciais: \n${requestHeader.take(200)}")
                 }
 
-                // Extracao do Host
                 var host = ""
                 var remotePort = 80
 
@@ -79,8 +96,6 @@ class ProxyServer(private val port: Int = 8282) {
                     host = hostPort[0]
                     remotePort = if (hostPort.size > 1) hostPort[1].toInt() else 443
                 } else {
-                    // Tratar request HTTP convencional
-                    // Precisamos achar o header 'Host:'
                     val hostLine = lines.find { it.startsWith("Host: ", ignoreCase = true) }
                     if (hostLine != null) {
                         val hostValue = hostLine.substring(6).trim()
@@ -88,30 +103,17 @@ class ProxyServer(private val port: Int = 8282) {
                         host = hp[0]
                         remotePort = if (hp.size > 1) hp[1].toInt() else 80
                     } else {
-                        // Tentar extrair da URL
-                        if (url.startsWith("http://")) {
-                            url = url.substring(7)
-                        }
+                        if (url.startsWith("http://")) url = url.substring(7)
                         val hp = url.split("/")[0].split(":")
                         host = hp[0]
                         remotePort = if (hp.size > 1) hp[1].toInt() else 80
                     }
                 }
 
-                if (isNuclear) {
-                    Log.e("NUCLEAR_OPTION", "Alvo roteado -> Host: $host | Porta: $remotePort")
-                }
-
                 tunnelTraffic(host, remotePort, method, buffer, bytesRead, client, input, output, isNuclear, attemptId)
 
             } catch (e: Exception) {
-                if (isNuclear) {
-                    Log.e("NUCLEAR_OPTION", "FALHA CRITICA NA TENTATIVA #$attemptId: ${e.message}", e)
-                }
-            } finally {
-                if (isNuclear) {
-                    Log.e("NUCLEAR_OPTION", "--- FIM TENTATIVA #$attemptId ---")
-                }
+                if (isNuclear) Log.e("NUCLEAR_OPTION", "FALHA TENTATIVA #$attemptId: ${e.message}")
             }
         }
     }
@@ -136,41 +138,24 @@ class ProxyServer(private val port: Int = 8282) {
                     remoteOutput.flush()
                 }
                 
-                // Pipeline Bidirecional Assincrono
                 val clientToRemote = launch {
                     try {
-                        val buffer = ByteArray(8192)
-                        var read: Int
-                        while (clientInput.read(buffer).also { read = it } != -1) {
-                            remoteOutput.write(buffer, 0, read)
-                            remoteOutput.flush()
-                        }
+                        clientInput.copyTo(remoteOutput)
                     } catch (e: Exception) {}
-                    remoteSocket.close() // Close remote if client dies
+                    remoteSocket.close()
                 }
                 
                 val remoteToClient = launch {
                     try {
-                        val buffer = ByteArray(8192)
-                        var read: Int
-                        while (remoteInput.read(buffer).also { read = it } != -1) {
-                            clientOutput.write(buffer, 0, read)
-                            clientOutput.flush()
-                        }
+                        remoteInput.copyTo(clientOutput)
                     } catch (e: Exception) {}
-                    client.close() // Close client if remote dies
+                    client.close()
                 }
                 
-                if (isNuclear) {
-                    Log.e("NUCLEAR_OPTION", "Tentativa #$attemptId conectada com sucesso a $host:$port. Tunel ativo.")
-                }
-
                 joinAll(clientToRemote, remoteToClient)
                 
             } catch (e: Exception) {
-                if (isNuclear) {
-                    Log.e("NUCLEAR_OPTION", "Erro ao estabelecer tunel com $host:$port na tentativa #$attemptId", e)
-                }
+                if (isNuclear) Log.e("NUCLEAR_OPTION", "Erro no tunel #$attemptId: ${e.message}")
             } finally {
                 remoteSocket?.close()
             }
