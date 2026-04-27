@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">بدء المشاركة</string>
+    <string name="stop_sharing">إيقاف المشاركة</string>
+    <string name="sharing_internet">مشاركة الإنترنت جارية</string>
+    <string name="ready_to_share">جاهز للمشاركة</string>
+    <string name="ssid_label">اسم الشبكة (SSID)</string>
+    <string name="password_label">كلمة المرور</string>
+    <string name="proxy_label">عنوان الوكيل (IP)</string>
+    <string name="port_label">المنفذ</string>
+    <string name="config_proxy_desc">قم بتكوين الوكيل يدويًا على جهاز العميل باستخدام البيانات المذكورة أعلاه.</string>
+    <string name="settings_title">الإعدادات</string>
+    <string name="automation_section">الأتمتة</string>
+    <string name="restart_max_label">الحد الأقصى لإعادة التشغيل التلقائي</string>
+    <string name="restart_network_label">إعادة التشغيل عند عودة الإنترنت</string>
+    <string name="notification_section">الإشعارات</string>
+    <string name="show_speed_label">عرض السرعة (كيلوبايت/ثانية)</string>
+    <string name="show_ping_label">عرض البينغ (ملي ثانية)</string>
+    <string name="access_control_section">التحكم في الوصول</string>
+    <string name="max_connections_label">حد الاتصالات المتزامنة</string>
+    <string name="banned_devices_label">الأجهزة المحظورة</string>
+    <string name="battery_optimization_label">السماح باستخدام البطارية دون قيود</string>
+    <string name="battery_optimization_desc">يضمن عدم توقف التطبيق في الخلفية.</string>
+    <string name="permissions_required">الأذونات مطلوبة لعمل Wi-Fi Direct.</string>
+    <string name="hotspot_error">خطأ في نقطة الاتصال. جاري إعادة التشغيل...</string>
+    <string name="status_active">الحالة: نشط</string>
+    <string name="ping_label">بينغ</string>
+</resources>

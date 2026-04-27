@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">Начать общий доступ</string>
+    <string name="stop_sharing">Остановить общий доступ</string>
+    <string name="sharing_internet">Раздача интернета</string>
+    <string name="ready_to_share">Готов к раздаче</string>
+    <string name="ssid_label">Имя сети (SSID)</string>
+    <string name="password_label">Пароль</string>
+    <string name="proxy_label">IP прокси</string>
+    <string name="port_label">Порт</string>
+    <string name="config_proxy_desc">Настройте прокси вручную на клиентском устройстве, используя указанные выше данные.</string>
+    <string name="settings_title">Настройки</string>
+    <string name="automation_section">Автоматизация</string>
+    <string name="restart_max_label">Макс. число автоперезапусков</string>
+    <string name="restart_network_label">Перезапуск при восстановлении интернета</string>
+    <string name="notification_section">Уведомления</string>
+    <string name="show_speed_label">Показывать скорость (КБ/с)</string>
+    <string name="show_ping_label">Показывать пинг (мс)</string>
+    <string name="access_control_section">Контроль доступа</string>
+    <string name="max_connections_label">Лимит одновременных подключений</string>
+    <string name="banned_devices_label">Заблокированные устройства</string>
+    <string name="battery_optimization_label">Разрешить использование батареи без ограничений</string>
+    <string name="battery_optimization_desc">Гарантирует, что приложение не остановится в фоновом режиме.</string>
+    <string name="permissions_required">Для работы Wi-Fi Direct требуются разрешения.</string>
+    <string name="hotspot_error">Ошибка точки доступа. Перезапуск...</string>
+    <string name="status_active">Статус: Активен</string>
+    <string name="ping_label">Пинг</string>
+</resources>

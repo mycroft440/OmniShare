@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">Iniciar Compartilhamento</string>
+    <string name="stop_sharing">Parar Compartilhamento</string>
+    <string name="sharing_internet">Compartilhando Internet</string>
+    <string name="ready_to_share">Pronto para compartilhar</string>
+    <string name="ssid_label">Nome da Rede (SSID)</string>
+    <string name="password_label">Senha</string>
+    <string name="proxy_label">Proxy IP</string>
+    <string name="port_label">Porta</string>
+    <string name="config_proxy_desc">Configure o Proxy Manual no dispositivo cliente com os dados acima.</string>
+    <string name="settings_title">Configurações</string>
+    <string name="automation_section">Automação</string>
+    <string name="restart_max_label">Máximo de reinícios automáticos</string>
+    <string name="restart_network_label">Reiniciar quando a internet voltar</string>
+    <string name="notification_section">Notificações</string>
+    <string name="show_speed_label">Mostrar velocidade (KB/s)</string>
+    <string name="show_ping_label">Mostrar Ping (ms)</string>
+    <string name="access_control_section">Controle de Acesso</string>
+    <string name="max_connections_label">Limite de conexões simultâneas</string>
+    <string name="banned_devices_label">Dispositivos Banidos</string>
+    <string name="battery_optimization_label">Permitir uso da bateria sem restrição</string>
+    <string name="battery_optimization_desc">Garante que o app não pare em segundo plano.</string>
+    <string name="permissions_required">Permissões são necessárias para o Wi-Fi Direct funcionar.</string>
+    <string name="hotspot_error">Erro no roteador. Reiniciando...</string>
+    <string name="status_active">Status: Ativo</string>
+    <string name="ping_label">Ping</string>
+</resources>

@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (!allGranted) {
-            Toast.makeText(this, "Permissões são necessárias para o Wi-Fi Direct funcionar.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.permissions_required), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         SettingsScreen(
                             prefs = prefs,
+                            onBatteryRequest = { checkAndRequestBatteryOptimizations() },
                             onBack = { currentScreen = "main" }
                         )
                     }
@@ -79,6 +80,8 @@ class MainActivity : ComponentActivity() {
                     data = android.net.Uri.parse("package:$packageName")
                 }
                 startActivity(intent)
+            } else {
+                Toast.makeText(this, "Bateria já está sem restrições.", Toast.LENGTH_SHORT).show()
             }
         }
     }

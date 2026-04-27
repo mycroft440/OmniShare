@@ -1,3 +1,28 @@
 <resources>
     <string name="app_name">OmniShare</string>
+    <string name="start_sharing">Start Sharing</string>
+    <string name="stop_sharing">Stop Sharing</string>
+    <string name="sharing_internet">Sharing Internet</string>
+    <string name="ready_to_share">Ready to share</string>
+    <string name="ssid_label">Network Name (SSID)</string>
+    <string name="password_label">Password</string>
+    <string name="proxy_label">Proxy IP</string>
+    <string name="port_label">Port</string>
+    <string name="config_proxy_desc">Configure Manual Proxy on the client device with the data above.</string>
+    <string name="settings_title">Settings</string>
+    <string name="automation_section">Automation</string>
+    <string name="restart_max_label">Maximum automatic restarts</string>
+    <string name="restart_network_label">Restart when internet returns</string>
+    <string name="notification_section">Notifications</string>
+    <string name="show_speed_label">Show speed (KB/s)</string>
+    <string name="show_ping_label">Show Ping (ms)</string>
+    <string name="access_control_section">Access Control</string>
+    <string name="max_connections_label">Simultaneous connections limit</string>
+    <string name="banned_devices_label">Banned Devices</string>
+    <string name="battery_optimization_label">Allow battery use without restriction</string>
+    <string name="battery_optimization_desc">Ensures the app doesn\'t stop in the background.</string>
+    <string name="permissions_required">Permissions are required for Wi-Fi Direct to work.</string>
+    <string name="hotspot_error">Hotspot error. Restarting...</string>
+    <string name="status_active">Status: Active</string>
+    <string name="ping_label">Ping</string>
 </resources>

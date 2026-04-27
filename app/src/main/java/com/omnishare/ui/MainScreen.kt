@@ -8,9 +8,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omnishare.R
 import com.omnishare.service.OmniShareService
 
 @Composable
@@ -30,7 +32,7 @@ fun MainScreen(
             onClick = onSettingsClick,
             modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
         ) {
-            Icon(Icons.Default.Settings, contentDescription = "Configurações")
+            Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
         }
 
         Column(
@@ -41,7 +43,7 @@ fun MainScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "OmniShare",
+                text = stringResource(R.string.app_name),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -50,7 +52,7 @@ fun MainScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = if (isRunning) "Compartilhando Internet" else "Pronto para compartilhar",
+                text = if (isRunning) stringResource(R.string.sharing_internet) else stringResource(R.string.ready_to_share),
                 fontSize = 16.sp,
                 color = Color.Gray
             )
@@ -59,16 +61,24 @@ fun MainScreen(
                 Row(modifier = Modifier.padding(vertical = 8.dp)) {
                     Text(text = speed, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text(text = "Ping: $ping", color = Color.Gray)
+                    Text(text = "${stringResource(R.string.ping_label)}: $ping", color = Color.Gray)
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             if (isRunning && groupInfo != null) {
-                InfoCard(label = "SSID", value = groupInfo?.networkName ?: "...")
-                InfoCard(label = "Senha", value = groupInfo?.passphrase ?: "...")
-                InfoCard(label = "Proxy", value = "$hostIpAddress:8282")
+                InfoCard(label = stringResource(R.string.ssid_label), value = groupInfo?.networkName ?: "...")
+                InfoCard(label = stringResource(R.string.password_label), value = groupInfo?.passphrase ?: "...")
+                InfoCard(label = stringResource(R.string.proxy_label), value = "$hostIpAddress:8282")
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.config_proxy_desc),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(48.dp))
@@ -80,7 +90,7 @@ fun MainScreen(
                     containerColor = if (isRunning) Color.Red else MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text(if (isRunning) "PARAR COMPARTILHAMENTO" else "INICIAR COMPARTILHAMENTO")
+                Text(if (isRunning) stringResource(R.string.stop_sharing) else stringResource(R.string.start_sharing))
             }
         }
     }

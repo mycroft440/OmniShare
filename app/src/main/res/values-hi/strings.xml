@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">साझा करना शुरू करें</string>
+    <string name="stop_sharing">साझा करना बंद करें</string>
+    <string name="sharing_internet">इंटरनेट साझा किया जा रहा है</string>
+    <string name="ready_to_share">साझा करने के लिए तैयार</string>
+    <string name="ssid_label">नेटवर्क नाम (SSID)</string>
+    <string name="password_label">पासवर्ड</string>
+    <string name="proxy_label">प्रॉक्सी आईपी</string>
+    <string name="port_label">पोर्ट</string>
+    <string name="config_proxy_desc">उपरोक्त डेटा के साथ क्लाइंट डिवाइस पर मैनुअल प्रॉक्सी कॉन्फ़िगर करें।</string>
+    <string name="settings_title">सेटिंग्स</string>
+    <string name="automation_section">स्वचालन</string>
+    <string name="restart_max_label">अधिकतम ऑटो-रीस्टार्ट</string>
+    <string name="restart_network_label">इंटरनेट वापस आने पर रीस्टार्ट करें</string>
+    <string name="notification_section">सूचनाएं</string>
+    <string name="show_speed_label">गति दिखाएं (KB/s)</string>
+    <string name="show_ping_label">पिंग दिखाएं (ms)</string>
+    <string name="access_control_section">पहुंच नियंत्रण</string>
+    <string name="max_connections_label">एक साथ कनेक्शन की सीमा</string>
+    <string name="banned_devices_label">प्रतिबंधित उपकरण</string>
+    <string name="battery_optimization_label">बिना किसी प्रतिबंध के बैटरी उपयोग की अनुमति दें</string>
+    <string name="battery_optimization_desc">यह सुनिश्चित करता है कि ऐप बैकग्राउंड में बंद न हो।</string>
+    <string name="permissions_required">Wi-Fi डायरेक्ट के काम करने के लिए अनुमतियां आवश्यक हैं।</string>
+    <string name="hotspot_error">हॉटस्पॉट त्रुटि। पुनरारंभ हो रहा है...</string>
+    <string name="status_active">स्थिति: सक्रिय</string>
+    <string name="ping_label">पिंग</string>
+</resources>

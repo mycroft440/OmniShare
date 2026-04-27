@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">开始共享</string>
+    <string name="stop_sharing">停止共享</string>
+    <string name="sharing_internet">正在共享网络</string>
+    <string name="ready_to_share">准备共享</string>
+    <string name="ssid_label">网络名称 (SSID)</string>
+    <string name="password_label">密码</string>
+    <string name="proxy_label">代理 IP</string>
+    <string name="port_label">端口</string>
+    <string name="config_proxy_desc">请使用上述数据在客户端设备上配置手动代理。</string>
+    <string name="settings_title">设置</string>
+    <string name="automation_section">自动化</string>
+    <string name="restart_max_label">最大自动重启次数</string>
+    <string name="restart_network_label">网络恢复时重启</string>
+    <string name="notification_section">通知</string>
+    <string name="show_speed_label">显示速度 (KB/s)</string>
+    <string name="show_ping_label">显示延迟 (ms)</string>
+    <string name="access_control_section">访问控制</string>
+    <string name="max_connections_label">同时连接限制</string>
+    <string name="banned_devices_label">已封禁设备</string>
+    <string name="battery_optimization_label">允许无限制使用电池</string>
+    <string name="battery_optimization_desc">确保应用程序不会在后台停止。</string>
+    <string name="permissions_required">Wi-Fi 直连需要相关权限才能工作。</string>
+    <string name="hotspot_error">热点错误。正在重启...</string>
+    <string name="status_active">状态：活动</string>
+    <string name="ping_label">延迟</string>
+</resources>

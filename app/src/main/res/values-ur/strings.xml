@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">شیئرنگ شروع کریں</string>
+    <string name="stop_sharing">شیئرنگ بند کریں</string>
+    <string name="sharing_internet">انٹرنیٹ شیئر کیا جا رہا ہے</string>
+    <string name="ready_to_share">شیئرنگ کے لیے تیار</string>
+    <string name="ssid_label">نیٹ ورک کا نام (SSID)</string>
+    <string name="password_label">پاس ورڈ</string>
+    <string name="proxy_label">پراکسی آئی پی</string>
+    <string name="port_label">پورٹ</string>
+    <string name="config_proxy_desc">اوپر دیے گئے ڈیٹا کے ساتھ کلائنٹ ڈیوائس پر مینوئل پراکسی کنفیگر کریں۔</string>
+    <string name="settings_title">ترتیبات</string>
+    <string name="automation_section">آٹومیشن</string>
+    <string name="restart_max_label">خودکار ری اسٹارٹ کی حد</string>
+    <string name="restart_network_label">انٹرنیٹ واپس آنے پر ری اسٹارٹ کریں</string>
+    <string name="notification_section">اطلاعات</string>
+    <string name="show_speed_label">رفتار دکھائیں (KB/s)</string>
+    <string name="show_ping_label">پنگ دکھائیں (ms)</string>
+    <string name="access_control_section">رسائی کا کنٹرول</string>
+    <string name="max_connections_label">ایک ساتھ کنکشن کی حد</string>
+    <string name="banned_devices_label">بلاک شدہ آلات</string>
+    <string name="battery_optimization_label">بغیر کسی پابندی کے بیٹری کے استعمال کی اجازت دیں</string>
+    <string name="battery_optimization_desc">اس بات کو یقینی بناتا ہے کہ ایپ پس منظر میں بند نہ ہو۔</string>
+    <string name="permissions_required">وائی فائی ڈائریکٹ کے کام کرنے کے لیے اجازتیں درکار ہیں۔</string>
+    <string name="hotspot_error">ہاٹ اسپاٹ کی خرابی۔ دوبارہ شروع ہو رہا ہے...</string>
+    <string name="status_active">حالت: فعال</string>
+    <string name="ping_label">پنگ</string>
+</resources>

@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">OmniShare</string>
+    <string name="start_sharing">Démarrer le partage</string>
+    <string name="stop_sharing">Arrêter le partage</string>
+    <string name="sharing_internet">Partage d\'Internet</string>
+    <string name="ready_to_share">Prêt à partager</string>
+    <string name="ssid_label">Nom du réseau (SSID)</string>
+    <string name="password_label">Mot de passe</string>
+    <string name="proxy_label">IP du Proxy</string>
+    <string name="port_label">Port</string>
+    <string name="config_proxy_desc">Configurez le proxy manuel sur l\'appareil client avec les données ci-dessus.</string>
+    <string name="settings_title">Paramètres</string>
+    <string name="automation_section">Automatisation</string>
+    <string name="restart_max_label">Maximum de redémarrages automatiques</string>
+    <string name="restart_network_label">Redémarrer quand Internet revient</string>
+    <string name="notification_section">Notifications</string>
+    <string name="show_speed_label">Afficher la vitesse (KB/s)</string>
+    <string name="show_ping_label">Afficher le Ping (ms)</string>
+    <string name="access_control_section">Contrôle d\'accès</string>
+    <string name="max_connections_label">Limite de connexions simultanées</string>
+    <string name="banned_devices_label">Appareils bannis</string>
+    <string name="battery_optimization_label">Autoriser l\'utilisation de la batterie sans restriction</string>
+    <string name="battery_optimization_desc">Garantit que l\'application ne s\'arrête pas en arrière-plan.</string>
+    <string name="permissions_required">Des autorisations sont requises pour que Wi-Fi Direct fonctionne.</string>
+    <string name="hotspot_error">Erreur de point d\'accès. Redémarrage...</string>
+    <string name="status_active">Statut : Actif</string>
+    <string name="ping_label">Ping</string>
+</resources>
