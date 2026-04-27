@@ -6,7 +6,6 @@ import android.net.wifi.p2p.WifiP2pGroup
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.omnishare.R
 import com.omnishare.network.ProxyServer
 import com.omnishare.network.WifiShareManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +17,7 @@ class OmniShareService : Service() {
     companion object {
         const val CHANNEL_ID = "OmniShareChannel"
         val groupInfo = MutableStateFlow<WifiP2pGroup?>(null)
+        val hostIpAddress = MutableStateFlow("192.168.49.1")
         val isServiceRunning = MutableStateFlow(false)
     }
 
@@ -32,9 +32,10 @@ class OmniShareService : Service() {
         startForeground(1, notification)
 
         wifiManager.startHotspot(
-            onSuccess = { group ->
+            onSuccess = { group, ipAddress ->
                 groupInfo.value = group
-                updateNotification("Rede: ${group.networkName} | Senha: ${group.passphrase}")
+                hostIpAddress.value = ipAddress
+                updateNotification("Rede: ${group.networkName} | IP: $ipAddress")
                 proxyServer.start()
                 isServiceRunning.value = true
             },
@@ -51,6 +52,7 @@ class OmniShareService : Service() {
         proxyServer.stop()
         isServiceRunning.value = false
         groupInfo.value = null
+        hostIpAddress.value = "192.168.49.1"
         super.onDestroy()
     }
 

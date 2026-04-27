@@ -9,11 +9,11 @@ class WifiShareManager(private val context: Context) {
     private val manager: WifiP2pManager? = context.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
     private val channel: WifiP2pManager.Channel? = manager?.initialize(context, context.mainLooper, null)
 
-    fun startHotspot(onSuccess: (WifiP2pGroup) -> Unit, onError: (Int) -> Unit) {
+    fun startHotspot(onSuccess: (WifiP2pGroup, String) -> Unit, onError: (Int) -> Unit) {
         manager?.createGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 Log.d("WifiShareManager", "Grupo P2P criado com sucesso")
-                requestGroupInfo(onSuccess)
+                requestGroupDetails(onSuccess)
             }
 
             override fun onFailure(reason: Int) {
@@ -35,10 +35,18 @@ class WifiShareManager(private val context: Context) {
         })
     }
 
-    private fun requestGroupInfo(onSuccess: (WifiP2pGroup) -> Unit) {
+    private fun requestGroupDetails(onSuccess: (WifiP2pGroup, String) -> Unit) {
         manager?.requestGroupInfo(channel) { group ->
             if (group != null) {
-                onSuccess(group)
+                manager.requestConnectionInfo(channel) { info ->
+                    val ipAddress = if (info != null && info.groupFormed && info.groupOwnerAddress != null) {
+                        info.groupOwnerAddress.hostAddress ?: "192.168.49.1"
+                    } else {
+                        "192.168.49.1"
+                    }
+                    Log.d("WifiShareManager", "IP Dinâmico capturado: $ipAddress")
+                    onSuccess(group, ipAddress)
+                }
             }
         }
     }

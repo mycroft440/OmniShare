@@ -18,6 +18,7 @@ fun MainScreen(
 ) {
     val isRunning by OmniShareService.isServiceRunning.collectAsState()
     val groupInfo by OmniShareService.groupInfo.collectAsState()
+    val hostIpAddress by OmniShareService.hostIpAddress.collectAsState()
 
     Column(
         modifier = Modifier
@@ -54,7 +55,7 @@ fun MainScreen(
             )
             InfoCard(
                 label = "Proxy IP",
-                value = "192.168.49.1"
+                value = hostIpAddress
             )
             InfoCard(
                 label = "Porta",
