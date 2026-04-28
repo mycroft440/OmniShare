@@ -131,10 +131,10 @@ class OmniShareService : Service() {
     private fun measurePing(): String {
         return try {
             val start = System.currentTimeMillis()
-            val process = Runtime.getRuntime().exec("ping -c 1 -W 1 8.8.8.8")
-            val result = process.waitFor()
+            // Fix 2.1: Solução leve via Socket (evita fork de processo Linux)
+            Socket().use { it.connect(InetSocketAddress("8.8.8.8", 53), 1000) }
             val end = System.currentTimeMillis()
-            if (result == 0) "${end - start} ms" else "-- ms"
+            "${end - start} ms"
         } catch (e: Exception) {
             "-- ms"
         }

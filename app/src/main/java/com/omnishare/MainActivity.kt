@@ -131,11 +131,22 @@ class MainActivity : ComponentActivity() {
         try {
             if (content.contains("PROXY:")) {
                 val proxyPart = content.substringAfter("PROXY:")
-                val parts = proxyPart.split(":")
-                OmniVpnService.proxyHost = parts[0]
-                OmniVpnService.proxyPort = parts[1].toInt()
-                OmniLogger.i("MainActivity", "Configuração via QR recebida: ${OmniVpnService.proxyHost}:${OmniVpnService.proxyPort}")
-                prepareVpn()
+                if (proxyPart.contains(":")) {
+                    val parts = proxyPart.split(":")
+                    val host = parts[0]
+                    val port = parts.getOrNull(1)?.toIntOrNull()
+                    
+                    if (host.isNotEmpty() && port != null) {
+                        OmniVpnService.proxyHost = host
+                        OmniVpnService.proxyPort = port
+                        OmniLogger.i("MainActivity", "Configuração via QR recebida: ${OmniVpnService.proxyHost}:${OmniVpnService.proxyPort}")
+                        prepareVpn()
+                    } else {
+                        Toast.makeText(this, "QR Code Inválido: Dados de conexão ausentes", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this, "QR Code Inválido: Formato incorreto", Toast.LENGTH_SHORT).show()
+                }
             }
         } catch (e: Exception) {
             OmniLogger.e("MainActivity", "Erro ao processar QR Code", e)

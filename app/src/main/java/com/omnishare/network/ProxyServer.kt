@@ -16,9 +16,13 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentHashMap
 import java.net.NetworkInterface
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ProxyServer {
     private var serverSocket: ServerSocket? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    private val proxyDispatcher = Dispatchers.IO.limitedParallelism(200)
+    private val scope = CoroutineScope(proxyDispatcher + SupervisorJob())
+    
     private var isRunning = false
     private var currentConnections = AtomicInteger(0)
     private val activeClients = ConcurrentHashMap<String, Int>()
@@ -42,8 +46,8 @@ class ProxyServer {
                 OmniLogger.i("ProxyServer", "🚀 Servidor Dual iniciado na porta $actualPort")
                 while (isRunning) {
                     val clientSocket = serverSocket?.accept() ?: break
-                    launch { 
-                        handleClient(clientSocket) 
+                    scope.launch { 
+                        handleClient(clientSocket, prefs) 
                     }
                 }
             } catch (e: Exception) {
@@ -66,11 +70,20 @@ class ProxyServer {
         scope.cancel()
     }
 
-    private suspend fun handleClient(clientSocket: Socket) {
+    private suspend fun handleClient(clientSocket: Socket, prefs: AppPreferences) {
         clientSocket.soTimeout = 30000 
         try {
-            currentConnections.incrementAndGet()
+            val maxConn = prefs.maxConnections.first()
+            val banned = prefs.bannedIps.first()
             val clientIp = clientSocket.inetAddress.hostAddress ?: "unknown"
+
+            if (currentConnections.get() >= maxConn || banned.contains(clientIp)) {
+                OmniLogger.w("ProxyServer", "Bloqueado: $clientIp (Limite ou Ban)")
+                try { clientSocket.close() } catch (e: Exception) {}
+                return
+            }
+
+            currentConnections.incrementAndGet()
             activeClients[clientIp] = (activeClients[clientIp] ?: 0) + 1
             
             val input = clientSocket.getInputStream()
@@ -163,9 +176,11 @@ class ProxyServer {
                             udpSocket.receive(packet)
                         } catch (e: Exception) { continue }
                         
-                        // Lógica NAT Avançada
-                        val sessionKey = "${packet.address.hostAddress}:${packet.port}"
-                        udpSessions[sessionKey] = System.currentTimeMillis()
+                        // Limpeza periódica do mapa UDP (Fix 3.2)
+                        if (System.currentTimeMillis() % 10 == 0L) {
+                            val now = System.currentTimeMillis()
+                            udpSessions.entries.removeIf { now - it.value > 60000 }
+                        }
 
                         if (packet.address == clientAddress) {
                             clientPort = packet.port
@@ -268,17 +283,23 @@ class ProxyServer {
     private fun readHeader(input: InputStream, firstByte: Int): String? {
         val bos = java.io.ByteArrayOutputStream()
         bos.write(firstByte)
-        val buffer = ByteArray(1)
-        var lastFour = ""
+        val buffer = ByteArray(2048) // Fix 2.2: Lendo em chunks
         try {
-            while (input.read(buffer) != -1) {
-                bos.write(buffer[0].toInt())
-                lastFour += buffer[0].toChar()
-                if (lastFour.length > 4) lastFour = lastFour.substring(1)
-                if (lastFour == "\r\n\r\n") break
-                if (bos.size() > 8192) break // Proteção contra cabeçalhos gigantes
+            val bytesRead = input.read(buffer)
+            if (bytesRead != -1) {
+                bos.write(buffer, 0, bytesRead)
             }
-            return bos.toString("UTF-8")
+            // Verifica se o cabeçalho está completo ou se precisamos ler mais
+            var header = bos.toString("UTF-8")
+            if (!header.contains("\r\n\r\n")) {
+                val secondBuffer = ByteArray(2048)
+                val secondRead = input.read(secondBuffer)
+                if (secondRead != -1) {
+                    bos.write(secondBuffer, 0, secondRead)
+                    header = bos.toString("UTF-8")
+                }
+            }
+            return header
         } catch (e: Exception) {
             return null
         }
