@@ -8,6 +8,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.net.wifi.p2p.WifiP2pGroup
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -15,6 +16,8 @@ import androidx.core.app.NotificationCompat
 import com.omnishare.AppPreferences
 import com.omnishare.network.ProxyServer
 import com.omnishare.network.WifiShareManager
+import com.omnishare.utils.OmniLogger
+import com.omnishare.utils.OmniStateRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -31,14 +34,10 @@ class OmniShareService : Service() {
     
     private var restartCount = AtomicInteger(0)
     private var lastTotalBytes: Long = 0
+    private val isRunning = java.util.concurrent.atomic.AtomicBoolean(true)
 
     companion object {
         const val CHANNEL_ID = "OmniShareChannel"
-        val groupInfo = MutableStateFlow<WifiP2pGroup?>(null)
-        val hostIpAddress = MutableStateFlow("192.168.49.1")
-        val isServiceRunning = MutableStateFlow(false)
-        val currentSpeed = MutableStateFlow("0 KB/s")
-        val currentPing = MutableStateFlow("-- ms")
     }
 
     override fun onCreate() {
@@ -51,34 +50,41 @@ class OmniShareService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = createNotification("Iniciando...")
-        startForeground(1, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        } else {
+            startForeground(1, notification)
+        }
         startHotspotWithRetry()
         return START_STICKY
     }
 
     private fun startHotspotWithRetry() {
-        wifiManager.startHotspot(
-            onSuccess = { group, ipAddress ->
-                groupInfo.value = group
-                hostIpAddress.value = ipAddress
-                restartCount.set(0)
-                proxyServer.start(prefs)
-                isServiceRunning.value = true
-                startMonitoring()
-            },
-            onError = {
-                val max = runBlocking { prefs.autoRestartMax.first() }
-                if (restartCount.incrementAndGet() <= max) {
-                    Log.w("OmniShareService", "Erro no roteador. Reiniciando (${restartCount.get()}/$max)...")
-                    serviceScope.launch {
-                        delay(3000)
-                        startHotspotWithRetry()
+        serviceScope.launch {
+            wifiManager.startHotspot(
+                onSuccess = { group, ipAddress ->
+                    OmniStateRepository.updateGroupInfo(group)
+                    OmniStateRepository.updateHostIp(ipAddress)
+                    restartCount.set(0)
+                    proxyServer.start(prefs)
+                    OmniStateRepository.updateHostPort(proxyServer.actualPort)
+                    OmniStateRepository.updateServiceStatus(true)
+                    startMonitoring()
+                },
+                onError = {
+                    val max = runBlocking { prefs.autoRestartMax.first() }
+                    if (restartCount.incrementAndGet() <= max) {
+                        OmniLogger.w("OmniShareService", "Erro no roteador. Reiniciando (${restartCount.get()}/$max)...")
+                        serviceScope.launch {
+                            delay(3000)
+                            startHotspotWithRetry()
+                        }
+                    } else {
+                        stopSelf()
                     }
-                } else {
-                    stopSelf()
                 }
-            }
-        )
+            )
+        }
     }
 
     private fun startMonitoring() {
@@ -93,18 +99,21 @@ class OmniShareService : Service() {
                 
                 var speedText = ""
                 if (showSpeed) {
-                    val currentTotal = TrafficStats.getTotalRxBytes() + TrafficStats.getTotalTxBytes()
-                    val diff = (currentTotal - lastTotalBytes) / 2 // bytes per second (approx)
+                    val uid = android.os.Process.myUid()
+                    val currentTotal = TrafficStats.getUidRxBytes(uid) + TrafficStats.getUidTxBytes(uid)
+                    val diff = (currentTotal - lastTotalBytes) / 2
                     lastTotalBytes = currentTotal
                     speedText = formatSpeed(diff)
-                    currentSpeed.value = speedText
+                    OmniStateRepository.updateSpeed(speedText)
                 }
 
                 var pingText = ""
                 if (showPing) {
                     pingText = measurePing()
-                    currentPing.value = pingText
+                    OmniStateRepository.updatePing(pingText)
                 }
+
+                OmniStateRepository.updateDevices(proxyServer.connectedClientsIps)
 
                 updateNotification("Status: Ativo | $speedText | Ping: $pingText")
             }
@@ -122,9 +131,10 @@ class OmniShareService : Service() {
     private fun measurePing(): String {
         return try {
             val start = System.currentTimeMillis()
-            Socket().use { it.connect(InetSocketAddress("8.8.8.8", 53), 1000) }
+            val process = Runtime.getRuntime().exec("ping -c 1 -W 1 8.8.8.8")
+            val result = process.waitFor()
             val end = System.currentTimeMillis()
-            "${end - start} ms"
+            if (result == 0) "${end - start} ms" else "-- ms"
         } catch (e: Exception) {
             "-- ms"
         }
@@ -136,7 +146,7 @@ class OmniShareService : Service() {
             override fun onAvailable(network: Network) {
                 serviceScope.launch {
                     if (prefs.autoRestartNetworkChange.first() && isServiceRunning.value) {
-                        Log.i("OmniShareService", "Internet restabelecida. Reiniciando para atualizar rotas.")
+                        OmniLogger.i("OmniShareService", "Internet restabelecida. Reiniciando para atualizar rotas.")
                         restartHotspot()
                     }
                 }
@@ -151,11 +161,14 @@ class OmniShareService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning.set(false)
         monitorJob?.cancel()
         serviceScope.cancel()
+        
+        // Correção 2.3: Fechar sockets forçadamente para liberar threads IO
         wifiManager.stopHotspot()
         proxyServer.stop()
-        isServiceRunning.value = false
+        OmniStateRepository.updateServiceStatus(false)
         super.onDestroy()
     }
 

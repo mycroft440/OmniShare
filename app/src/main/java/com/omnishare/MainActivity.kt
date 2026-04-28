@@ -2,22 +2,40 @@ package com.omnishare
 
 import android.Manifest
 import android.content.Intent
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.runtime.*
 import com.omnishare.service.OmniShareService
+import com.omnishare.service.OmniVpnService
 import com.omnishare.ui.MainScreen
 import com.omnishare.ui.SettingsScreen
+import com.omnishare.ui.OmniShareTheme
+import com.omnishare.utils.OmniLogger
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var prefs: AppPreferences
+
+    private val vpnPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            startVpnService()
+        }
+    }
+
+    private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            processQrCode(result.contents)
+        }
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -30,6 +48,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        OmniLogger.init(this)
         prefs = AppPreferences(this)
         
         requestPermissions()
@@ -37,21 +56,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             var currentScreen by remember { mutableStateOf("main") }
 
-            MaterialTheme {
-                Surface {
-                    if (currentScreen == "main") {
+            OmniShareTheme {
+                if (currentScreen == "main") {
                         MainScreen(
-                            onStart = { startService() },
-                            onStop = { stopService() },
-                            onSettingsClick = { currentScreen = "settings" }
+                            onStart = { startShareService() },
+                            onStop = { stopShareService() },
+                            onSettingsClick = { currentScreen = "settings" },
+                            onStartVpn = { prepareVpn() },
+                            onStopVpn = { stopVpnService() },
+                            onScan = { launchScanner() }
                         )
-                    } else {
-                        SettingsScreen(
-                            prefs = prefs,
-                            onBatteryRequest = { checkAndRequestBatteryOptimizations() },
-                            onBack = { currentScreen = "main" }
-                        )
-                    }
+                } else {
+                    SettingsScreen(
+                        prefs = prefs,
+                        onBatteryRequest = { checkAndRequestBatteryOptimizations() },
+                        onBack = { currentScreen = "main" }
+                    )
                 }
             }
         }
@@ -61,15 +81,65 @@ class MainActivity : ComponentActivity() {
         val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.NEARBY_WIFI_DEVICES
+            Manifest.permission.NEARBY_WIFI_DEVICES,
+            Manifest.permission.CAMERA
         )
-        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        
         requestPermissionLauncher.launch(permissions.toTypedArray())
-        checkAndRequestBatteryOptimizations()
+    }
+
+    private fun startShareService() {
+        val intent = Intent(this, OmniShareService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+    }
+
+    private fun stopShareService() {
+        stopService(Intent(this, OmniShareService::class.java))
+    }
+
+    fun prepareVpn() {
+        val intent = VpnService.prepare(this)
+        if (intent != null) {
+            vpnPermissionLauncher.launch(intent)
+        } else {
+            startVpnService()
+        }
+    }
+
+    private fun startVpnService() {
+        startService(Intent(this, OmniVpnService::class.java))
+    }
+
+    fun stopVpnService() {
+        startService(Intent(this, OmniVpnService::class.java).apply { action = "STOP" })
+    }
+
+    fun launchScanner() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            setPrompt(getString(R.string.scan_button))
+            setBeepEnabled(true)
+            setOrientationLocked(false)
+        }
+        barcodeLauncher.launch(options)
+    }
+
+    private fun processQrCode(content: String) {
+        // Exemplo: WIFI:S:DIRECT-OmniShare;T:WPA;P:12345678;H:false;;PROXY:192.168.49.1:8282
+        try {
+            if (content.contains("PROXY:")) {
+                val proxyPart = content.substringAfter("PROXY:")
+                val parts = proxyPart.split(":")
+                OmniVpnService.proxyHost = parts[0]
+                OmniVpnService.proxyPort = parts[1].toInt()
+                OmniLogger.i("MainActivity", "Configuração via QR recebida: ${OmniVpnService.proxyHost}:${OmniVpnService.proxyPort}")
+                prepareVpn()
+            }
+        } catch (e: Exception) {
+            OmniLogger.e("MainActivity", "Erro ao processar QR Code", e)
+        }
     }
 
     private fun checkAndRequestBatteryOptimizations() {
@@ -80,23 +150,7 @@ class MainActivity : ComponentActivity() {
                     data = android.net.Uri.parse("package:$packageName")
                 }
                 startActivity(intent)
-            } else {
-                Toast.makeText(this, "Bateria já está sem restrições.", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun startService() {
-        val intent = Intent(this, OmniShareService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
-    }
-
-    private fun stopService() {
-        val intent = Intent(this, OmniShareService::class.java)
-        stopService(intent)
     }
 }

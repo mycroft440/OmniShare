@@ -25,4 +25,9 @@
     <string name="hotspot_error">Hotspot error. Restarting...</string>
     <string name="status_active">Status: Active</string>
     <string name="ping_label">Ping</string>
+    <string name="hide_logs">Hide Logs</string>
+    <string name="show_logs">View Real-time Logs</string>
+    <string name="connection_data">Connection Data</string>
+    <string name="speed_label">Speed</string>
+    <string name="latency_label">Latency</string>
 </resources>

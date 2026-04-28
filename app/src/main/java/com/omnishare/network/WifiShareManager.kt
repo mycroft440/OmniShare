@@ -4,35 +4,39 @@ import android.content.Context
 import android.net.wifi.p2p.WifiP2pGroup
 import android.net.wifi.p2p.WifiP2pManager
 import android.util.Log
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 
 class WifiShareManager(private val context: Context) {
     private val manager: WifiP2pManager? = context.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
     private val channel: WifiP2pManager.Channel? = manager?.initialize(context, context.mainLooper, null)
 
-    fun startHotspot(onSuccess: (WifiP2pGroup, String) -> Unit, onError: (Int) -> Unit) {
-        manager?.createGroup(channel, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() {
-                Log.d("WifiShareManager", "Grupo P2P criado com sucesso")
-                requestGroupDetails(onSuccess)
+    suspend fun startHotspot(onSuccess: (WifiP2pGroup, String) -> Unit, onError: (Int) -> Unit) {
+        val created = withTimeoutOrNull(10000) {
+            suspendCancellableCoroutine<Boolean> { cont ->
+                manager?.createGroup(channel, object : WifiP2pManager.ActionListener {
+                    override fun onSuccess() {
+                        if (cont.isActive) cont.resume(true)
+                    }
+                    override fun onFailure(reason: Int) {
+                        if (cont.isActive) cont.resume(false)
+                    }
+                }) ?: cont.resume(false)
             }
+        } ?: false
 
-            override fun onFailure(reason: Int) {
-                Log.e("WifiShareManager", "Falha ao criar grupo: $reason")
-                onError(reason)
-            }
-        })
+        if (created) {
+            Log.d("WifiShareManager", "Grupo P2P criado com sucesso")
+            requestGroupDetails(onSuccess)
+        } else {
+            Log.e("WifiShareManager", "Falha ao criar grupo ou timeout")
+            onError(-1)
+        }
     }
 
     fun stopHotspot() {
-        manager?.removeGroup(channel, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() {
-                Log.d("WifiShareManager", "Grupo P2P removido")
-            }
-
-            override fun onFailure(reason: Int) {
-                Log.e("WifiShareManager", "Falha ao remover grupo: $reason")
-            }
-        })
+        manager?.removeGroup(channel, null)
     }
 
     private fun requestGroupDetails(onSuccess: (WifiP2pGroup, String) -> Unit) {

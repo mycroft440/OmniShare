@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
 
     <application
         android:allowBackup="true"
@@ -31,11 +34,22 @@
             </intent-filter>
         </activity>
 
+
         <service
             android:name=".service.OmniShareService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
-            
+
+        <service
+            android:name=".service.OmniVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

@@ -25,4 +25,14 @@
     <string name="hotspot_error">Erro no roteador. Reiniciando...</string>
     <string name="status_active">Status: Ativo</string>
     <string name="ping_label">Ping</string>
+    <string name="hide_logs">Esconder Logs</string>
+    <string name="show_logs">Ver Logs em Tempo Real</string>
+    <string name="connection_data">Dados da Conexão</string>
+    <string name="speed_label">Velocidade</string>
+    <string name="latency_label">Latência</string>
+    <string name="mode_share">Modo Compartilhar</string>
+    <string name="mode_receive">Modo Receber</string>
+    <string name="scan_qr_desc">Escaneie o código do outro celular para configurar automaticamente.</string>
+    <string name="scan_button">Escanear QR Code</string>
+    <string name="vpn_active">VPN Ativa - Tráfego Tunelado</string>
 </resources>
