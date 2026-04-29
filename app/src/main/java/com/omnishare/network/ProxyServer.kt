@@ -249,7 +249,7 @@ class ProxyServer {
         }
     }
 
-    private fun handleHttp(client: Socket, input: InputStream, output: OutputStream, firstByte: Int) {
+    private suspend fun handleHttp(client: Socket, input: InputStream, output: OutputStream, firstByte: Int) {
         val header = readHeader(input, firstByte) ?: return
         val lines = header.split("\r\n")
         if (lines.isEmpty()) return

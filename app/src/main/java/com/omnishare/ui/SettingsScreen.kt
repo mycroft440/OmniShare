@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.omnishare.AppPreferences
 import com.omnishare.R
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,7 +114,7 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterHorizontally
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(ip)
                     IconButton(onClick = { scope.launch { prefs.unbanIp(ip) } }) {
@@ -138,7 +139,7 @@ fun SettingsSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) -
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterHorizontally
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, fontSize = 14.sp)
         Switch(checked = checked, onCheckedChange = onCheckedChange)

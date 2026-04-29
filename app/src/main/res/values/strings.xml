@@ -30,4 +30,9 @@
     <string name="connection_data">Connection Data</string>
     <string name="speed_label">Speed</string>
     <string name="latency_label">Latency</string>
+    <string name="mode_share">Share</string>
+    <string name="mode_receive">Receive</string>
+    <string name="scan_button">Scan QR Code</string>
+    <string name="scan_qr_desc">Scan the Host QR code to connect automatically.</string>
+    <string name="vpn_active">VPN is Active</string>
 </resources>

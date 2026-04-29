@@ -145,7 +145,7 @@ class OmniShareService : Service() {
         connectivityManager.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 serviceScope.launch {
-                    if (prefs.autoRestartNetworkChange.first() && isServiceRunning.value) {
+                    if (prefs.autoRestartNetworkChange.first() && OmniStateRepository.isServiceRunning.value) {
                         OmniLogger.i("OmniShareService", "Internet restabelecida. Reiniciando para atualizar rotas.")
                         restartHotspot()
                     }

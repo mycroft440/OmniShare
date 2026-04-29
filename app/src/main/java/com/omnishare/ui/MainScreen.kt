@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -490,7 +491,7 @@ fun ActionButton(isRunning: Boolean, onStart: () -> Unit, onStop: () -> Unit) {
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
     ) {
         Icon(
-            imageVector = if (isRunning) Icons.Default.PowerSettingsNew,
+            imageVector = if (isRunning) Icons.Default.Close else Icons.Default.PlayArrow,
             contentDescription = null
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -533,7 +534,7 @@ fun DevicesSection(devices: List<String>) {
                             modifier = Modifier.padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Devices, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
+                            Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(text = ip, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
