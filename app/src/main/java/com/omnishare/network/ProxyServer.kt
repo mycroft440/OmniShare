@@ -265,12 +265,12 @@ class ProxyServer {
 
         if (method == "CONNECT") {
             val hp = url.split(":")
-            host = hp[0]; port = if (hp.size > 1) hp[1].toInt() else 443
+            host = hp[0]; port = if (hp.size > 1) hp[1].toIntOrNull() ?: 443 else 443
         } else {
             val hostLine = lines.find { it.startsWith("Host: ", ignoreCase = true) }
             if (hostLine != null) {
                 val hv = hostLine.substring(6).trim().split(":")
-                host = hv[0]; port = if (hv.size > 1) hv[1].toInt() else 80
+                host = hv[0]; port = if (hv.size > 1) hv[1].toIntOrNull() ?: 80 else 80
             }
         }
         if (host.isNotEmpty()) {
@@ -308,15 +308,18 @@ class ProxyServer {
     private suspend fun tunnelRaw(host: String, port: Int, client: Socket, input: InputStream, output: OutputStream) {
         withContext(Dispatchers.IO) {
             try {
-                Socket(host, port).use { remote ->
+                java.net.Socket().apply {
+                    connect(java.net.InetSocketAddress(host, port), 15000) // Timeout de conexão de 15s
+                    soTimeout = 60000 // Timeout de leitura para evitar threads penduradas
+                }.use { remote ->
                     val rIn = remote.getInputStream(); val rOut = remote.getOutputStream()
                     val c2r = launch { 
                         try { input.copyTo(rOut, 65536) } catch (e: Exception) {} 
-                        finally { try { remote.shutdownOutput() } catch (e: Exception) {} }
+                        finally { try { remote.close() } catch (e: Exception) {} }
                     }
                     val r2c = launch { 
                         try { rIn.copyTo(output, 65536) } catch (e: Exception) {} 
-                        finally { try { client.shutdownOutput() } catch (e: Exception) {} }
+                        finally { try { client.close() } catch (e: Exception) {} }
                     }
                     joinAll(c2r, r2c)
                     OmniLogger.d("ProxyServer", "Conexão encerrada com $host:$port")
@@ -328,7 +331,10 @@ class ProxyServer {
     private suspend fun tunnelHttp(host: String, port: Int, method: String, header: String, client: Socket, input: InputStream, output: OutputStream) {
         withContext(Dispatchers.IO) {
             try {
-                Socket(host, port).use { remote ->
+                java.net.Socket().apply {
+                    connect(java.net.InetSocketAddress(host, port), 15000) // Timeout de conexão de 15s
+                    soTimeout = 60000 // Timeout de leitura
+                }.use { remote ->
                     val rIn = remote.getInputStream(); val rOut = remote.getOutputStream()
                     if (method == "CONNECT") {
                         output.write("HTTP/1.1 200 Connection Established\r\n\r\n".toByteArray()); output.flush()
@@ -337,11 +343,11 @@ class ProxyServer {
                     }
                     val c2r = launch { 
                         try { input.copyTo(rOut, 65536) } catch (e: Exception) {} 
-                        finally { try { remote.shutdownOutput() } catch (e: Exception) {} }
+                        finally { try { remote.close() } catch (e: Exception) {} }
                     }
                     val r2c = launch { 
                         try { rIn.copyTo(output, 65536) } catch (e: Exception) {} 
-                        finally { try { client.shutdownOutput() } catch (e: Exception) {} }
+                        finally { try { client.close() } catch (e: Exception) {} }
                     }
                     joinAll(c2r, r2c)
                     OmniLogger.d("ProxyServer", "Conexão encerrada com $host:$port")

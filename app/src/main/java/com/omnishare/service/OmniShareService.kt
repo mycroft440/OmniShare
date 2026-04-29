@@ -80,6 +80,7 @@ class OmniShareService : Service() {
                             startHotspotWithRetry()
                         }
                     } else {
+                        OmniStateRepository.updateServiceStatus(false)
                         stopSelf()
                     }
                 }

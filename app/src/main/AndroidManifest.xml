@@ -39,7 +39,9 @@
             android:name=".service.OmniShareService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
+            android:foregroundServiceType="connectedDevice">
+            <property android:name="android.app.property.SPECIAL_USE_FGS_SUBTYPE" android:value="Proxy Server and Network Sharing" />
+        </service>
 
         <service
             android:name=".service.OmniVpnService"

@@ -44,8 +44,11 @@ class OmniVpnService : VpnService() {
         val builder = Builder()
             .setSession("OmniShare VPN")
             .addAddress("10.0.0.2", 24)
-            .addRoute("0.0.0.0", 0)
-            .addDnsServer("8.8.8.8")
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    setHttpProxy(android.net.ProxyInfo.buildDirectProxy(proxyHost, proxyPort))
+                }
+            }
             .setMtu(1500)
             .setBlocking(true)
             
@@ -78,35 +81,10 @@ class OmniVpnService : VpnService() {
     }
 
     private suspend fun runVpnLoop() {
-        val fd = vpnInterface?.fileDescriptor ?: return
-        val inputStream = FileInputStream(fd)
-        val outputStream = FileOutputStream(fd)
-        val buffer = ByteBuffer.allocate(16384)
-
         try {
+            // Com o ProxyInfo ativo, o SO faz o encaminhamento sem precisar ler descritores TUN brutos
             while (isRunning.get()) {
-                val read = inputStream.read(buffer.array())
-                if (read > 0) {
-                    val data = buffer.array()
-                    // Análise básica IPv4
-                    val version = (data[0].toInt() shr 4) and 0x0F
-                    if (version == 4) {
-                        val protocol = data[9].toInt()
-                        val destIp = InetAddress.getByAddress(data.copyOfRange(16, 20))
-                        
-                        // Log de detecção de tráfego
-                        if (protocol == 6) { // TCP
-                            val destPort = ((data[22].toInt() and 0xff) shl 8) or (data[23].toInt() and 0xff)
-                            OmniLogger.d("OmniVpnService", "Capturado TCP para ${destIp.hostAddress}:$destPort")
-                            // TODO: Encaminhar para tunnel SOCKS5
-                        } else if (protocol == 17) { // UDP
-                            val destPort = ((data[22].toInt() and 0xff) shl 8) or (data[23].toInt() and 0xff)
-                            OmniLogger.d("OmniVpnService", "Capturado UDP para ${destIp.hostAddress}:$destPort")
-                            // TODO: Encaminhar para tunnel SOCKS5 UDP
-                        }
-                    }
-                }
-                delay(5)
+                delay(1000)
             }
         } catch (e: Exception) {
             OmniLogger.e("OmniVpnService", "Erro no loop da VPN", e)

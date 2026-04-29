@@ -15,14 +15,19 @@ class WifiShareManager(private val context: Context) {
     suspend fun startHotspot(onSuccess: (WifiP2pGroup, String) -> Unit, onError: (Int) -> Unit) {
         val created = withTimeoutOrNull(10000) {
             suspendCancellableCoroutine<Boolean> { cont ->
-                manager?.createGroup(channel, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        if (cont.isActive) cont.resume(true)
-                    }
-                    override fun onFailure(reason: Int) {
-                        if (cont.isActive) cont.resume(false)
-                    }
-                }) ?: cont.resume(false)
+                try {
+                    manager?.createGroup(channel, object : WifiP2pManager.ActionListener {
+                        override fun onSuccess() {
+                            if (cont.isActive) cont.resume(true)
+                        }
+                        override fun onFailure(reason: Int) {
+                            if (cont.isActive) cont.resume(false)
+                        }
+                    }) ?: cont.resume(false)
+                } catch (e: SecurityException) {
+                    Log.e("WifiShareManager", "Permissão negada ao iniciar Hotspot: ${e.message}")
+                    if (cont.isActive) cont.resume(false)
+                }
             }
         } ?: false
 
