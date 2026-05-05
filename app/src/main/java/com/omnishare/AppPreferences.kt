@@ -1,4 +1,4 @@
-package com.omnishare
+﻿package com.omnishare
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -18,6 +18,10 @@ class AppPreferences(private val context: Context) {
         val SHOW_PING = booleanPreferencesKey("show_ping")
         val MAX_CONNECTIONS = intPreferencesKey("max_connections")
         val BANNED_IPS = stringSetPreferencesKey("banned_ips")
+        val ADBLOCK_ENABLED = booleanPreferencesKey("adblock_enabled")
+        val QOS_ENABLED = booleanPreferencesKey("qos_enabled")
+        val QOS_SPEED_LIMIT = intPreferencesKey("qos_speed_limit")
+        val WOL_ENABLED = booleanPreferencesKey("wol_enabled")
     }
 
     val autoRestartMax: Flow<Int> = context.dataStore.data.map { it[AUTO_RESTART_MAX] ?: 5 }
@@ -26,13 +30,21 @@ class AppPreferences(private val context: Context) {
     val showPing: Flow<Boolean> = context.dataStore.data.map { it[SHOW_PING] ?: true }
     val maxConnections: Flow<Int> = context.dataStore.data.map { it[MAX_CONNECTIONS] ?: 10 }
     val bannedIps: Flow<Set<String>> = context.dataStore.data.map { it[BANNED_IPS] ?: emptySet() }
+    val adblockEnabled: Flow<Boolean> = context.dataStore.data.map { it[ADBLOCK_ENABLED] ?: false }
+    val qosEnabled: Flow<Boolean> = context.dataStore.data.map { it[QOS_ENABLED] ?: false }
+    val qosSpeedLimit: Flow<Int> = context.dataStore.data.map { it[QOS_SPEED_LIMIT] ?: 0 }
+    val wolEnabled: Flow<Boolean> = context.dataStore.data.map { it[WOL_ENABLED] ?: false }
 
     suspend fun updateSettings(
         maxRestart: Int? = null,
         networkRestart: Boolean? = null,
         speed: Boolean? = null,
         ping: Boolean? = null,
-        maxConn: Int? = null
+        maxConn: Int? = null,
+        adblock: Boolean? = null,
+        qos: Boolean? = null,
+        qosLimit: Int? = null,
+        wol: Boolean? = null
     ) {
         context.dataStore.edit { preferences ->
             maxRestart?.let { preferences[AUTO_RESTART_MAX] = it }
@@ -40,6 +52,10 @@ class AppPreferences(private val context: Context) {
             speed?.let { preferences[SHOW_SPEED] = it }
             ping?.let { preferences[SHOW_PING] = it }
             maxConn?.let { preferences[MAX_CONNECTIONS] = it }
+            adblock?.let { preferences[ADBLOCK_ENABLED] = it }
+            qos?.let { preferences[QOS_ENABLED] = it }
+            qosLimit?.let { preferences[QOS_SPEED_LIMIT] = it }
+            wol?.let { preferences[WOL_ENABLED] = it }
         }
     }
 

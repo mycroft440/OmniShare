@@ -1,0 +1,67 @@
+{
+    "version":  1,
+    "description":  "ConfiguraÃ§Ã£o segura para AG Toolkit. O agente deve chamar comandos por nome, nÃ£o por texto livre.",
+    "commands":  {
+                     "test":  "npm test",
+                     "build":  "npm run build",
+                     "lint":  "npm run lint"
+                 },
+    "suites":  {
+                   "default":  [
+                                   "lint",
+                                   "test",
+                                   "build"
+                               ],
+                   "quick":  [
+                                 "lint",
+                                 "test"
+                             ]
+               },
+    "riskPatterns":  [
+                         ".env",
+                         "*.pem",
+                         "*.key",
+                         "*.pfx",
+                         "*.p12",
+                         ".github/workflows/**",
+                         "package.json",
+                         "package-lock.json",
+                         "pnpm-lock.yaml",
+                         "yarn.lock"
+                     ],
+    "secretRegexes":  [
+                          "ghp_[A-Za-z0-9_]{20,}",
+                          "github_pat_[A-Za-z0-9_]+",
+                          "AKIA[0-9A-Z]{16}",
+                          "(?i)(password|passwd|secret|api[_-]?key|token)\\s*[=:]\\s*[^\\s]+"
+                      ],
+    "ci":  {
+               "preferCommitSha":  true,
+               "saveFullLogs":  true,
+               "printFailedLogs":  true
+           },
+    "validators":  {
+                       "json":  "builtin:json",
+                       "ps1":  "builtin:powershell"
+                   },
+    "blockedPaths":  [
+                         ".git",
+                         ".git/**",
+                         ".ag-agent",
+                         ".ag-agent/**",
+                         "node_modules/**",
+                         "vendor/**",
+                         "dist/**",
+                         "build/**",
+                         "coverage/**",
+                         ".env",
+                         ".env.*",
+                         "*.pem",
+                         "*.key",
+                         "*.pfx",
+                         "*.p12",
+                         "*.sqlite",
+                         "*.db"
+                     ],
+    "maxPrintedLogLines":  220
+}

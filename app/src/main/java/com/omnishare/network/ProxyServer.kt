@@ -13,6 +13,7 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ConcurrentHashMap
 import java.net.NetworkInterface
 
@@ -26,10 +27,15 @@ class ProxyServer {
     private var isRunning = false
     private var currentConnections = AtomicInteger(0)
     private val activeClients = ConcurrentHashMap<String, Int>()
-    private val udpSessions = ConcurrentHashMap<String, Long>() // Para expirar sessões UDP inativas
+    private val udpSessions = ConcurrentHashMap<String, Long>()
+    private val deviceStats = ConcurrentHashMap<String, AtomicLong>()
+    private var qosEnabled = false
+    private var qosLimitBps = 0L
+    private val blockedDomains = setOf("doubleclick.net", "google-analytics.com", "ads.google.com", "crashlytics.com")
     
     val connectedClientsCount: Int get() = activeClients.size
     val connectedClientsIps: List<String> get() = activeClients.keys().toList()
+    val deviceTrafficStats: Map<String, Long> get() = deviceStats.mapValues { it.value.get() }
     
     var actualPort: Int = 8282
         private set
@@ -37,11 +43,15 @@ class ProxyServer {
     fun start(prefs: AppPreferences) {
         if (isRunning) return
         isRunning = true
+        
         scope.launch {
             try {
+                qosEnabled = prefs.qosEnabled.first()
+                qosLimitBps = prefs.qosSpeedLimit.first().toLong() * 1024L
+                
                 actualPort = findFreePort(8282)
                 serverSocket = ServerSocket(actualPort).apply {
-                    soTimeout = 0 // Aceitar conexões infinitamente
+                    soTimeout = 0
                 }
                 OmniLogger.i("ProxyServer", "🚀 Servidor Dual iniciado na porta $actualPort")
                 while (isRunning) {
@@ -72,10 +82,10 @@ class ProxyServer {
 
     private suspend fun handleClient(clientSocket: Socket, prefs: AppPreferences) {
         clientSocket.soTimeout = 30000 
+        val clientIp = clientSocket.inetAddress.hostAddress ?: "unknown"
         try {
             val maxConn = prefs.maxConnections.first()
             val banned = prefs.bannedIps.first()
-            val clientIp = clientSocket.inetAddress.hostAddress ?: "unknown"
 
             if (currentConnections.get() >= maxConn || banned.contains(clientIp)) {
                 OmniLogger.w("ProxyServer", "Bloqueado: $clientIp (Limite ou Ban)")
@@ -89,135 +99,99 @@ class ProxyServer {
             val input = clientSocket.getInputStream()
             val output = clientSocket.getOutputStream()
             
-            // Correção 1.1: Leitura rigorosa do primeiro byte ou handshake
             val firstByte = input.read()
             if (firstByte == -1) return
             
             if (firstByte == 0x05) {
-                OmniLogger.d("ProxyServer", "SOCKS5 de $clientIp")
-                handleSocks5(clientSocket, input, output)
+                handleSocks5(clientSocket, input, output, clientIp)
             } else {
-                handleHttp(clientSocket, input, output, firstByte)
+                handleHttp(clientSocket, input, output, firstByte, clientIp)
             }
         } catch (e: Exception) {
-            OmniLogger.e("ProxyServer", "Erro no cliente: ${e.message}")
+            // Erro silencioso para evitar log spam de conexões abortadas
         } finally {
-            val clientIp = clientSocket.inetAddress.hostAddress ?: "unknown"
-            val count = (activeClients[clientIp] ?: 1) - 1
-            if (count <= 0) activeClients.remove(clientIp) else activeClients[clientIp] = count
             currentConnections.decrementAndGet()
+            val count = activeClients[clientIp] ?: 0
+            if (count <= 1) activeClients.remove(clientIp) else activeClients[clientIp] = count - 1
             try { clientSocket.close() } catch (e: Exception) {}
         }
     }
 
-    private suspend fun handleSocks5(client: Socket, input: InputStream, output: OutputStream) {
-        val nMethods = input.read()
-        input.skip(nMethods.toLong())
+    private suspend fun handleSocks5(client: Socket, input: InputStream, output: OutputStream, clientIp: String) {
+        val nmethods = input.read()
+        val methods = ByteArray(nmethods)
+        input.read(methods)
+        
         output.write(byteArrayOf(0x05, 0x00))
         output.flush()
 
-        val header = ByteArray(4)
-        input.read(header)
-        val command = header[1].toInt()
-        val addrType = header[3].toInt()
-
+        val version = input.read()
+        if (version != 0x05) return
+        val command = input.read()
+        input.read() // rsv
+        val atyp = input.read()
+        
         var host = ""
-        if (addrType == 0x01) {
-            val addr = ByteArray(4)
-            input.read(addr)
-            host = addr.joinToString(".") { (it.toInt() and 0xff).toString() }
-        } else if (addrType == 0x03) {
-            val len = input.read()
-            val addr = ByteArray(len)
-            input.read(addr)
-            host = String(addr)
+        when (atyp) {
+            0x01 -> { // IPv4
+                val addr = ByteArray(4)
+                input.read(addr)
+                host = InetAddress.getByAddress(addr).hostAddress
+            }
+            0x03 -> { // Domain name
+                val len = input.read()
+                val domain = ByteArray(len)
+                input.read(domain)
+                host = String(domain)
+            }
         }
+        val port = ((input.read() and 0xff) shl 8) or (input.read() and 0xff)
 
-        val portBytes = ByteArray(2)
-        input.read(portBytes)
-        val remotePort = ((portBytes[0].toInt() and 0xff) shl 8) or (portBytes[1].toInt() and 0xff)
+        if (blockedDomains.any { host.contains(it, ignoreCase = true) }) {
+            OmniLogger.w("ProxyServer", "AdBlock (SOCKS5): $host bloqueado para $clientIp")
+            try { client.close() } catch (e: Exception) {}
+            return
+        }
 
         if (command == 0x01) { // CONNECT
             output.write(byteArrayOf(0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0))
             output.flush()
-            tunnelRaw(host, remotePort, client, input, output)
+            tunnelRaw(host, port, client, input, output, clientIp)
         } else if (command == 0x03) { // UDP ASSOCIATE
-            startUdpRelay(client, output)
+            handleUdpAssociate(client, output, clientIp)
         }
     }
 
-    private suspend fun startUdpRelay(client: Socket, output: OutputStream) {
+    private suspend fun handleUdpAssociate(client: Socket, output: OutputStream, clientIp: String) {
+        val p2pIp = getP2pIp() ?: InetAddress.getByName("0.0.0.0")
+        val udpSocket = DatagramSocket(0, p2pIp)
+        val relayPort = udpSocket.localPort
+
+        val response = byteArrayOf(0x05, 0x00, 0x00, 0x01) + p2pIp.address + 
+                       byteArrayOf((relayPort shr 8).toByte(), (relayPort and 0xff).toByte())
+        output.write(response)
+        output.flush()
+
         withContext(Dispatchers.IO) {
-            val udpSocket = DatagramSocket(0)
-            val localPort = udpSocket.localPort
-            val clientAddress = client.inetAddress
-            
-            OmniLogger.d("ProxyServer", "UDP Relay iniciado na porta $localPort para ${clientAddress.hostAddress}")
-            
-            // Resposta SOCKS5 com a porta UDP do relay
-            val resp = ByteArray(10)
-            resp[0] = 0x05; resp[1] = 0x00; resp[2] = 0x00; resp[3] = 0x01
-            // Descobrir IP dinamicamente
-            val serverIp = getP2pIp() ?: InetAddress.getByName("192.168.49.1")
-            System.arraycopy(serverIp.address, 0, resp, 4, 4)
-            resp[8] = (localPort shr 8).toByte()
-            resp[9] = (localPort and 0xff).toByte()
-            output.write(resp)
-            output.flush()
-
             val relayJob = launch {
-                val buffer = ByteArray(65535)
-                var clientPort = 0
                 try {
-                    while (isActive && !client.isClosed) {
+                    val buffer = ByteArray(65536)
+                    while (isActive) {
                         val packet = DatagramPacket(buffer, buffer.size)
-                        udpSocket.soTimeout = 5000 // Poll cada 5s para checar isActive
-                        try {
-                            udpSocket.receive(packet)
-                        } catch (e: Exception) { continue }
+                        udpSocket.receive(packet)
                         
-                        // Limpeza periódica do mapa UDP (Fix 3.2)
-                        if (System.currentTimeMillis() % 10 == 0L) {
-                            val now = System.currentTimeMillis()
-                            udpSessions.entries.removeIf { now - it.value > 60000 }
-                        }
+                        val data = packet.data
+                        if (data[0].toInt() == 0 && data[1].toInt() == 0) {
+                            val frag = data[2].toInt()
+                            if (frag != 0) continue
+                            
+                            val clientAddress = packet.address
+                            val clientPort = packet.port
+                            udpSessions[clientIp] = System.currentTimeMillis()
 
-                        if (packet.address == clientAddress) {
-                            clientPort = packet.port
-                            val data = packet.data
-                            if (data[2].toInt() != 0) continue // Não suportamos fragmentação
-
-                            val atyp = data[3].toInt()
-                            var offset = 4
-                            val targetHost = when(atyp) {
-                                0x01 -> { // IPv4
-                                    val addr = InetAddress.getByAddress(data.copyOfRange(offset, offset + 4))
-                                    offset += 4
-                                    addr
-                                }
-                                0x03 -> { // Domain
-                                    val len = data[offset].toInt()
-                                    offset += 1
-                                    val addr = InetAddress.getByName(String(data.copyOfRange(offset, offset + len)))
-                                    offset += len
-                                    addr
-                                }
-                                else -> null
-                            }
-
-                            if (targetHost != null) {
-                                val targetPort = ((data[offset].toInt() and 0xff) shl 8) or (data[offset + 1].toInt() and 0xff)
-                                offset += 2
-                                
-                                val payload = data.copyOfRange(offset, packet.length)
-                                val outPacket = DatagramPacket(payload, payload.size, targetHost, targetPort)
-                                udpSocket.send(outPacket)
-                            }
-                        } else {
-                            // Se o pacote vem do destino real (desencapsulado), encapsular e mandar pro cliente
-                            // [RSV 2][FRAG 1][ATYP 1][DST.ADDR 4][DST.PORT 2][DATA]
                             val responseHeader = ByteArray(10)
-                            responseHeader[0] = 0; responseHeader[1] = 0; responseHeader[2] = 0; responseHeader[3] = 1
+                            responseHeader[0] = 0x00; responseHeader[1] = 0x00; responseHeader[2] = 0x00
+                            responseHeader[3] = 0x01
                             System.arraycopy(packet.address.address, 0, responseHeader, 4, 4)
                             responseHeader[8] = (packet.port shr 8).toByte()
                             responseHeader[9] = (packet.port and 0xff).toByte()
@@ -236,7 +210,6 @@ class ProxyServer {
                 }
             }
             
-            // Mantem a conexao de controle aberta
             try {
                 while (isActive && !client.isClosed) {
                     if (client.getInputStream().read() == -1) break
@@ -249,7 +222,7 @@ class ProxyServer {
         }
     }
 
-    private suspend fun handleHttp(client: Socket, input: InputStream, output: OutputStream, firstByte: Int) {
+    private suspend fun handleHttp(client: Socket, input: InputStream, output: OutputStream, firstByte: Int, clientIp: String) {
         val header = readHeader(input, firstByte) ?: return
         val lines = header.split("\r\n")
         if (lines.isEmpty()) return
@@ -274,22 +247,24 @@ class ProxyServer {
             }
         }
         if (host.isNotEmpty()) {
-            val maskedHost = if (host.length > 4) "***" + host.substring(host.length - 4) else "***"
-            OmniLogger.d("ProxyServer", "HTTP $method para $maskedHost:$port")
-            tunnelHttp(host, port, method, header, client, input, output)
+            if (blockedDomains.any { host.contains(it, ignoreCase = true) }) {
+                OmniLogger.w("ProxyServer", "AdBlock: $host bloqueado para $clientIp")
+                try { client.close() } catch (e: Exception) {}
+                return
+            }
+            tunnelHttp(host, port, method, header, client, input, output, clientIp)
         }
     }
 
     private fun readHeader(input: InputStream, firstByte: Int): String? {
         val bos = java.io.ByteArrayOutputStream()
         bos.write(firstByte)
-        val buffer = ByteArray(2048) // Fix 2.2: Lendo em chunks
+        val buffer = ByteArray(2048)
         try {
             val bytesRead = input.read(buffer)
             if (bytesRead != -1) {
                 bos.write(buffer, 0, bytesRead)
             }
-            // Verifica se o cabeçalho está completo ou se precisamos ler mais
             var header = bos.toString("UTF-8")
             if (!header.contains("\r\n\r\n")) {
                 val secondBuffer = ByteArray(2048)
@@ -305,35 +280,34 @@ class ProxyServer {
         }
     }
 
-    private suspend fun tunnelRaw(host: String, port: Int, client: Socket, input: InputStream, output: OutputStream) {
+    private suspend fun tunnelRaw(host: String, port: Int, client: Socket, input: InputStream, output: OutputStream, clientIp: String) {
         withContext(Dispatchers.IO) {
             try {
                 java.net.Socket().apply {
-                    connect(java.net.InetSocketAddress(host, port), 15000) // Timeout de conexão de 15s
-                    soTimeout = 60000 // Timeout de leitura para evitar threads penduradas
+                    connect(java.net.InetSocketAddress(host, port), 15000)
+                    soTimeout = 60000
                 }.use { remote ->
                     val rIn = remote.getInputStream(); val rOut = remote.getOutputStream()
                     val c2r = launch { 
-                        try { input.copyTo(rOut, 65536) } catch (e: Exception) {} 
+                        try { copyWithStats(input, rOut, clientIp) } catch (e: Exception) {} 
                         finally { try { remote.close() } catch (e: Exception) {} }
                     }
                     val r2c = launch { 
-                        try { rIn.copyTo(output, 65536) } catch (e: Exception) {} 
+                        try { copyWithStats(rIn, output, clientIp) } catch (e: Exception) {} 
                         finally { try { client.close() } catch (e: Exception) {} }
                     }
                     joinAll(c2r, r2c)
-                    OmniLogger.d("ProxyServer", "Conexão encerrada com $host:$port")
                 }
             } catch (e: Exception) {}
         }
     }
 
-    private suspend fun tunnelHttp(host: String, port: Int, method: String, header: String, client: Socket, input: InputStream, output: OutputStream) {
+    private suspend fun tunnelHttp(host: String, port: Int, method: String, header: String, client: Socket, input: InputStream, output: OutputStream, clientIp: String) {
         withContext(Dispatchers.IO) {
             try {
                 java.net.Socket().apply {
-                    connect(java.net.InetSocketAddress(host, port), 15000) // Timeout de conexão de 15s
-                    soTimeout = 60000 // Timeout de leitura
+                    connect(java.net.InetSocketAddress(host, port), 15000)
+                    soTimeout = 60000
                 }.use { remote ->
                     val rIn = remote.getInputStream(); val rOut = remote.getOutputStream()
                     if (method == "CONNECT") {
@@ -342,18 +316,33 @@ class ProxyServer {
                         rOut.write(header.toByteArray()); rOut.flush()
                     }
                     val c2r = launch { 
-                        try { input.copyTo(rOut, 65536) } catch (e: Exception) {} 
+                        try { copyWithStats(input, rOut, clientIp) } catch (e: Exception) {} 
                         finally { try { remote.close() } catch (e: Exception) {} }
                     }
                     val r2c = launch { 
-                        try { rIn.copyTo(output, 65536) } catch (e: Exception) {} 
+                        try { copyWithStats(rIn, output, clientIp) } catch (e: Exception) {} 
                         finally { try { client.close() } catch (e: Exception) {} }
                     }
                     joinAll(c2r, r2c)
-                    OmniLogger.d("ProxyServer", "Conexão encerrada com $host:$port")
                 }
             } catch (e: Exception) {}
         }
+    }
+
+    private fun copyWithStats(input: InputStream, output: OutputStream, clientIp: String) {
+        val buffer = ByteArray(65536)
+        try {
+            while (isRunning) {
+                val bytes = input.read(buffer)
+                if (bytes == -1) break
+                output.write(buffer, 0, bytes)
+                deviceStats.getOrPut(clientIp) { AtomicLong(0) }.addAndGet(bytes.toLong())
+                if (qosEnabled && qosLimitBps > 0) {
+                    val sleepMs = (bytes.toLong() * 1000L) / qosLimitBps
+                    if (sleepMs > 0) Thread.sleep(sleepMs)
+                }
+            }
+        } catch (e: Exception) {}
     }
 
     private fun getP2pIp(): InetAddress? {

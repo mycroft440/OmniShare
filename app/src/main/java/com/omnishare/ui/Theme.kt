@@ -1,8 +1,10 @@
-package com.omnishare.ui
+﻿package com.omnishare.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
+import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(

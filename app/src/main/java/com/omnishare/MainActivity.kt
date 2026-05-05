@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import com.omnishare.service.OmniShareService
 import com.omnishare.service.OmniVpnService
 import com.omnishare.ui.MainScreen
+import com.omnishare.ui.StatsScreen
 import com.omnishare.ui.SettingsScreen
 import com.omnishare.ui.OmniShareTheme
 import com.omnishare.utils.OmniLogger
@@ -57,19 +58,22 @@ class MainActivity : ComponentActivity() {
             var currentScreen by remember { mutableStateOf("main") }
 
             OmniShareTheme {
-                if (currentScreen == "main") {
-                        MainScreen(
-                            onStart = { startShareService() },
-                            onStop = { stopShareService() },
-                            onSettingsClick = { currentScreen = "settings" },
-                            onStartVpn = { prepareVpn() },
-                            onStopVpn = { stopVpnService() },
-                            onScan = { launchScanner() }
-                        )
-                } else {
-                    SettingsScreen(
+                when (currentScreen) {
+                    "main" -> MainScreen(
+                        onStart = { startShareService() },
+                        onStop = { stopShareService() },
+                        onSettingsClick = { currentScreen = "settings" },
+                        onStatsClick = { currentScreen = "stats" },
+                        onStartVpn = { prepareVpn() },
+                        onStopVpn = { stopVpnService() },
+                        onScan = { launchScanner() }
+                    )
+                    "settings" -> SettingsScreen(
                         prefs = prefs,
                         onBatteryRequest = { checkAndRequestBatteryOptimizations() },
+                        onBack = { currentScreen = "main" }
+                    )
+                    "stats" -> StatsScreen(
                         onBack = { currentScreen = "main" }
                     )
                 }
@@ -127,25 +131,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun processQrCode(content: String) {
-        // Exemplo: WIFI:S:DIRECT-OmniShare;T:WPA;P:12345678;H:false;;PROXY:192.168.49.1:8282
         try {
             if (content.contains("PROXY:")) {
                 val proxyPart = content.substringAfter("PROXY:")
                 if (proxyPart.contains(":")) {
                     val parts = proxyPart.split(":")
                     val host = parts[0]
-                    val port = parts.getOrNull(1)?.toIntOrNull()
+                    val port = parts.getOrNull(1)?.substringBefore(";")?.substringBefore(" ")?.toIntOrNull()
                     
                     if (host.isNotEmpty() && port != null) {
                         OmniVpnService.proxyHost = host
                         OmniVpnService.proxyPort = port
                         OmniLogger.i("MainActivity", "Configuração via QR recebida: ${OmniVpnService.proxyHost}:${OmniVpnService.proxyPort}")
                         prepareVpn()
-                    } else {
-                        Toast.makeText(this, "QR Code Inválido: Dados de conexão ausentes", Toast.LENGTH_SHORT).show()
                     }
-                } else {
-                    Toast.makeText(this, "QR Code Inválido: Formato incorreto", Toast.LENGTH_SHORT).show()
                 }
             }
         } catch (e: Exception) {

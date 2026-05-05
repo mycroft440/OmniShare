@@ -1,4 +1,4 @@
-package com.omnishare.service
+﻿package com.omnishare.service
 
 import android.app.*
 import android.content.Context
@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.omnishare.AppPreferences
 import com.omnishare.network.ProxyServer
+import com.omnishare.network.FileServer
 import com.omnishare.network.WifiShareManager
 import com.omnishare.utils.OmniLogger
 import com.omnishare.utils.OmniStateRepository
@@ -29,6 +30,7 @@ class OmniShareService : Service() {
     private lateinit var wifiManager: WifiShareManager
     private lateinit var prefs: AppPreferences
     private val proxyServer = ProxyServer()
+    private val fileServer = FileServer()
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var monitorJob: Job? = null
     
@@ -67,6 +69,7 @@ class OmniShareService : Service() {
                     OmniStateRepository.updateHostIp(ipAddress)
                     restartCount.set(0)
                     proxyServer.start(prefs)
+                    fileServer.start()
                     OmniStateRepository.updateHostPort(proxyServer.actualPort)
                     OmniStateRepository.updateServiceStatus(true)
                     startMonitoring()
@@ -115,6 +118,7 @@ class OmniShareService : Service() {
                 }
 
                 OmniStateRepository.updateDevices(proxyServer.connectedClientsIps)
+                OmniStateRepository.updateDeviceTraffic(proxyServer.deviceTrafficStats)
 
                 updateNotification("Status: Ativo | $speedText | Ping: $pingText")
             }
@@ -158,6 +162,7 @@ class OmniShareService : Service() {
     private fun restartHotspot() {
         wifiManager.stopHotspot()
         proxyServer.stop()
+        fileServer.stop()
         startHotspotWithRetry()
     }
 
@@ -169,6 +174,7 @@ class OmniShareService : Service() {
         // Correção 2.3: Fechar sockets forçadamente para liberar threads IO
         wifiManager.stopHotspot()
         proxyServer.stop()
+        fileServer.stop()
         OmniStateRepository.updateServiceStatus(false)
         super.onDestroy()
     }

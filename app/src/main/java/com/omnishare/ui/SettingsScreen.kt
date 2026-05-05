@@ -1,4 +1,4 @@
-package com.omnishare.ui
+﻿package com.omnishare.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omnishare.AppPreferences
 import com.omnishare.R
+import com.omnishare.network.WolManager
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 
@@ -33,6 +34,11 @@ fun SettingsScreen(
     val showPing by prefs.showPing.collectAsState(true)
     val maxConnections by prefs.maxConnections.collectAsState(10)
     val bannedIps by prefs.bannedIps.collectAsState(emptySet())
+    val adblock by prefs.adblockEnabled.collectAsState(false)
+    val qos by prefs.qosEnabled.collectAsState(false)
+    val qosLimit by prefs.qosSpeedLimit.collectAsState(0)
+    val wolEnabled by prefs.wolEnabled.collectAsState(false)
+    var wolMac by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {

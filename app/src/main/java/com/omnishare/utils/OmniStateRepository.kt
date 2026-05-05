@@ -1,4 +1,4 @@
-package com.omnishare.utils
+﻿package com.omnishare.utils
 
 import android.content.Context
 import android.net.wifi.p2p.WifiP2pGroup
@@ -27,6 +27,9 @@ object OmniStateRepository {
     private val _connectedDevices = MutableStateFlow<List<String>>(emptyList())
     val connectedDevices = _connectedDevices.asStateFlow()
 
+    private val _deviceTraffic = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val deviceTraffic = _deviceTraffic.asStateFlow()
+
     fun updateGroupInfo(info: WifiP2pGroup?) { _groupInfo.value = info }
     fun updateHostIp(ip: String) { _hostIpAddress.value = ip }
     fun updateHostPort(port: Int) { _hostPort.value = port }
@@ -34,4 +37,5 @@ object OmniStateRepository {
     fun updateSpeed(speed: String) { _currentSpeed.value = speed }
     fun updatePing(ping: String) { _currentPing.value = ping }
     fun updateDevices(devices: List<String>) { _connectedDevices.value = devices }
+    fun updateDeviceTraffic(stats: Map<String, Long>) { _deviceTraffic.value = stats }
 }
